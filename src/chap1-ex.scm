@@ -124,10 +124,10 @@
 
 ;;; Exercise 1.17
 
-(define (* a b)
+(define (mult a b)
   (if (= b 0)
       0
-      (+ a (* a (- b 1)))))
+      (+ a (mult a (- b 1)))))
 
 (define (fast-mult a b)
   (cond ((= b 0) 0)
@@ -253,3 +253,93 @@
   (cond ((= times 0) true)
         ((miller-rabin-test n) (fast-prime2 n (- times 1)))
         (else false)))
+
+;;; Exercise 1.29
+
+(define (simpsons-rule f a b n)
+  (define h (/ (- b a) n))
+  (define (y k)
+    (f (+ a (* k h))))
+  (define (term k)
+    (* (cond ((or (= k 0) (= k n)) 1)
+             ((even? k) 2)
+             (else 4)) (y k)))
+  (* (sum term 0 inc n) (/ h 3.0)))
+
+;;; Exercise 1.30
+
+(define (sum term a next b)
+  (define (iter a result)
+    (if (> a b)
+        result
+        (iter (next a) (+ result (term a)))))
+  (iter a 0))
+
+;;; Exercise 1.31
+
+(define (product term a next b)
+  (if (> a b)
+      1
+      (* (term a)
+         (product term (next a) next b))))
+
+(define (factorial n)
+  (product identity 1 inc n))
+
+(define (pi-approx n)
+  (define (term k)
+    (/ (* 4 (square k)) (- (* 4 (square k)) 1)))
+  (* 2.0 (product term 1 inc n)))
+
+(define (product term a next b)
+  (define (iter a result)
+    (if (> a b)
+        result
+        (iter (next a) (* result (term a)))))
+  (iter a 1))
+
+;;; Exercise 1.32
+
+(define (accumulate combiner null-value term a next b)
+  (if (> a b)
+      null-value
+      (combiner (term a)
+                (accumulate combiner null-value term (next a) next b))))
+
+(define (sum term a next b)
+  (accumulate + 0 term a next b))
+
+(define (product term a next b)
+  (accumulate * 1 term a next b))
+
+(define (accumulate combiner null-value term a next b)
+  (define (iter a result)
+    (if (> a b)
+        result
+        (iter (next a) (combiner result (term a)))))
+  (iter a null-value))
+
+;;; Exercise 1.33
+
+(define (filtered-accumulate combiner null-value term a next b predicate)
+  (cond ((> a b) null-value)
+        ((predicate a) (combiner (term a)
+                                 (filtered-accumulate combiner
+                                                      null-value term
+                                                      (next a) next b predicate)))
+        (else (filtered-accumulate combiner
+                                   null-value term
+                                   (next a) next b predicate))))
+
+(define (sum-primes-squared a b)
+  (filtered-accumulate + 0 square a inc b prime?))
+
+(define (product-relatively-prime n)
+  (define (relatively-prime k)
+    (= (gcd k n) 1))
+  (filtered-accumulate * 1 identity 1 inc (- n 1) relatively-prime))
+
+;;; Exercise 1.34
+
+(define (f g)
+  (g 2))
