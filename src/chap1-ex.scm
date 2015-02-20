@@ -343,3 +343,64 @@
 
 (define (f g)
   (g 2))
+
+;;; Exercise 1.35
+
+(define (golden-ratio)
+  (fixed-point (lambda (x) (+ 1 (/ 1 x))) 1.0))
+
+;;; Exercise 1.36
+
+(define (fixed-point f first-guess)
+  (define (close-enough? v1 v2)
+    (< (abs (- v1 v2)) tolerance))
+  (define (try guess)
+    (newline)
+    (display guess)
+    (let ((next (f guess)))
+      (if (close-enough? guess next)
+          next
+          (try next))))
+  (try first-guess))
+
+(define (x-to-x)
+  (fixed-point (lambda (x) (/ (log 1000) (log x))) 2.0))
+
+(define (x-to-x-average)
+  (fixed-point (lambda (x) (average x (/ (log 1000) (log x)))) 2.0))
+
+;;; Exercise 1.37
+
+(define (cont-frac n d k)
+  (define (frac i)
+    (if (< i k)
+        (/ (n i) (+ (d i) (frac (+ i 1))))
+        (/ (n i) (d i))))
+  (frac 1))
+
+(define (cont-frac-iter n d k)
+  (define (frac-iter i result)
+    (if (= i 0)
+        result
+        (frac-iter (- i 1) (/ (n i) (+ (d i) result)))))
+  (frac-iter (- k 1) (/ (n k) (d k))))
+
+;;; Exercise 1.38
+
+(define (e-approx k)
+  (define (d i)
+    (if (not (= 0 (remainder (+ i 1) 3)))
+        1
+        (* 2 (/ (+ i 1) 3))))
+  (+ 2 (cont-frac (lambda (i) 1.0) d k)))
+
+;;; Exercise 1.39
+
+(define (tan-cf x k)
+  (define (n k)
+    (if (= k 1)
+        x
+        (- (square x))))
+  (define (d k)
+    (- (* 2 k) 1))
+  (cont-frac n d k))
