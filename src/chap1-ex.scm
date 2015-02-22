@@ -404,3 +404,70 @@
   (define (d k)
     (- (* 2 k) 1))
   (cont-frac n d k))
+
+;;; Exercise 1.40
+
+(define (cubic a b c)
+  (lambda (x)
+    (+ (cube x) (* a (square x)) (* b x) 1)))
+
+;;; Exercise 1.41
+
+(define (double f)
+  (lambda (x)
+    (f (f x))))
+
+;;; Exercise 1.42
+
+(define (compose f g)
+  (lambda (x)
+    (f (g x))))
+
+;;; Exercise 1.43
+
+(define (repeated f n)
+  (if (= n 1)
+      (lambda (x) (f x))
+      (compose f (repeated f (- n 1)))))
+
+;;; Exercise 1.44
+
+(define (smooth f)
+  (/ (f (- x dx)) (f x) (f (+ x dx))))
+
+(define (n-fold-smooth f n)
+  (repeated (smooth f) n))
+
+;;; Exercise 1.45
+
+(define (log2 x)
+  (/ (log x) (log 2)))
+
+(define (nth-root x n)
+  (fixed-point ((repeated average-damp (floor (log2 n)))
+                (lambda (y)
+                  (/ x (expt y (- n 1)))))
+               1.0))
+
+;;; Exercise 1.46
+
+(define (iter-improve good-enough? improve)
+  (define (iter guess)
+    (if (good-enough? guess)
+        guess
+        (iter (improve guess))))
+  iter)
+
+(define (sqrt x)
+  ((iter-improve (lambda (guess)
+                   (< (abs (- (square guess) x)) 0.001))
+                 (lambda (guess)
+                   (average guess (/ x guess))))
+   1.0))
+
+(define (iter-improve-fixed-point f guess)
+  ((iter-improve (lambda (guess)
+                   (< (abs (- (f guess) guess)) 0.00001))
+                 (lambda (guess)
+                   (f guess)))
+   guess))
