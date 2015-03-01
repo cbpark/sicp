@@ -101,3 +101,85 @@
   (lambda (f)
     (lambda (x)
       ((m f) ((n f) x)))))
+
+;;; Exercise 2.7
+
+(define (make-interval a b)
+  (cons a b))
+
+(define (upper-bound x)
+  (cdr x))
+
+(define (lower-bound x)
+  (car x))
+
+;;; Exercise 2.8
+
+(define (sub-interval x y)
+  (make-interval (- (lower-bound x) (upper-bound y))
+                 (- (upper-bound x) (lower-bound y))))
+
+;;; Exercise 2.9
+
+(define (width-interval x)
+  (/ (- (upper-bound x) (lower-bound x)) 2))
+
+;;; Exercise 2.10
+
+(define (div-interval x y)
+  (if (and (<= (lower-bound y) 0) (>= (upper-bound y) 0))
+      (error "The interval spans zero." y)
+      (mul-interval x
+                    (make-interval (/ 1.0 (upper-bound y))
+                                   (/ 1.0 (lower-bound y))))))
+
+;;; Exercise 2.11
+
+(define (mul-interval x y)
+  (let ((lx (lower-bound x))
+        (ux (upper-bound x))
+        (ly (lower-bound y))
+        (uy (upper-bound y)))
+    (cond ((> lx 0) (cond ((> ly 0) (make-interval (* lx ly) (* ux uy)))
+                          ((< uy 0) (make-interval (* ux ly) (* lx uy)))
+                          (else     (make-interval (* ux ly) (* uy ux)))))
+          ((> ly 0) (cond ((< ux 0) (make-interval (* uy lx) (* ly ux)))
+                          (else     (make-interval (* lx uy) (* ux uy)))))
+          ((< ux 0) (cond ((< uy 0) (make-interval (* ux uy) (* lx ly)))
+                          (else     (make-interval (* lx uy) (* lx ly)))))
+          ((< uy 0)                 (make-interval (* ux ly) (* lx ly)))
+          (else (let ((p1 (* (lower-bound x) (lower-bound y)))
+                      (p2 (* (lower-bound x) (upper-bound y)))
+                      (p3 (* (upper-bound x) (lower-bound y)))
+                      (p4 (* (upper-bound x) (upper-bound y))))
+                  (make-interval (min p1 p2 p3 p4)
+                                 (max p1 p2 p3 p4)))))))
+
+(define (make-center-width c w)
+  (make-interval (- c w) (+ c w)))
+
+(define (center i)
+  (/ (+ (lower-bound i) (upper-bound i)) 2.0))
+
+(define (width i)
+  (/ (- (upper-bound i) (lower-bound i)) 2.0))
+
+;;; Exercise 2.12
+
+(define (make-center-percent c p)
+  (make-center-width c (* c (/ p 100.0))))
+
+(define (percent i)
+  (* 100.0 (/ (width i) (center i))))
+
+;;; Exercise 2.13
+
+(define (par1 r1 r2)
+  (div-interval (mul-interval r1 r2)
+                (add-interval r1 r2)))
+
+(define (par2 r1 r2)
+  (let ((one (make-interval 1 1)))
+    (div-interval one
+                  (add-interval (div-interval one r1)
+                                (div-interval one r2)))))
