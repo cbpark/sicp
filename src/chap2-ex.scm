@@ -266,3 +266,104 @@
   (cond ((null? items) '())
         (else (proc (car items))
               (for-each proc (cdr items)))))
+
+;;; Exercise 2.27
+
+(define (deep-reverse x)
+  (cond ((null? x) '())
+        ((pair? (car x)) (append (deep-reverse (cdr x))
+                                 (list (deep-reverse (car x)))))
+        (else (append (deep-reverse (cdr x))
+                      (list (car x))))))
+
+;;; Exercise 2.28
+
+(define (fringe x)
+  (cond ((null? x) '())
+        ((not (pair? x)) (list x))
+        (else (append (fringe (car x))
+                      (fringe (cdr x))))))
+
+;;; Exercise 2.29
+
+(define (make-mobile left right)
+  (list left right))
+
+(define (make-branch length structure)
+  (list length structure))
+
+(define (left-branch mobile)
+  (car mobile))
+
+(define (right-branch mobile)
+  (cadr mobile))
+
+(define (branch-length branch)
+  (car branch))
+
+(define (branch-structure branch)
+  (cadr branch))
+
+(define (branch-weight branch)
+  (let ((s (branch-structure branch)))
+    (if (pair? s)
+        (total-weight s)
+        s)))
+
+(define (total-weight mobile)
+  (+ (branch-weight (left-branch mobile))
+     (branch-weight (right-branch mobile))))
+
+(define (branch-balanced? branch)
+  (let ((s (branch-structure branch)))
+    (if (pair? s)
+        (balanced? s)
+        true)))
+
+(define (branch-torque branch)
+  (* (branch-weight branch)
+     (branch-length branch)))
+
+(define (balanced? mobile)
+  (let ((l (left-branch mobile))
+        (r (right-branch mobile)))
+    (and (= (branch-torque l) (branch-torque r))
+         (branch-balanced? l)
+         (branch-balanced? r))))
+
+;;; Exercise 2.30
+
+(define (square-tree tree)
+  (cond ((null? tree) '())
+        ((not (pair? tree)) (square tree))
+        (else (cons (square-tree (car tree))
+                    (square-tree (cdr tree))))))
+
+(define (square-tree tree)
+  (map (lambda (sub-tree)
+         (if (pair? sub-tree)
+             (square-tree sub-tree)
+             (square sub-tree)))
+       tree))
+
+;;; Exercise 2.31
+
+(define (tree-map proc tree)
+  (map (lambda (sub-tree)
+         (if (pair? sub-tree)
+             (tree-map proc sub-tree)
+             (proc sub-tree)))
+       tree))
+
+(define (square-tree tree)
+  (tree-map square tree))
+
+;;; Exercise 2.32
+
+(define (subsets s)
+  (if (null? s)
+      (list '())
+      (let ((rest (subsets (cdr s))))
+        (append rest (map (lambda (x)
+                            (cons (car s)
+                                  x)) rest)))))
