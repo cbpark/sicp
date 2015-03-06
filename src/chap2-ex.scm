@@ -499,3 +499,13 @@
       (or (null? board) (and (not (attacks q (car board)))
                              (iter-safe? q (cdr board)))))
     (iter-safe? kth-queen rest-of-queens)))
+
+;;; Exercise 2.54
+
+(define (equal? a b)
+  (cond ((and (null? a) (null? b)) true)
+        ((or (null? a) (null? b)) false)
+        ((and (pair? a) (pair? b)) (and (equal? (car a) (car b))
+                                        (equal? (cdr a) (cdr b))))
+        ((or (pair? a) (pair? b)) false)
+        (else (eq? a b))))

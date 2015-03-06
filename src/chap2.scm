@@ -263,3 +263,28 @@
 
 (define (remove item sequence)
   (filter (lambda (x) (not (= x item))) sequence))
+
+;;; 2.2.4 Example: A Picture Language
+
+;;; The picture language
+
+;;; Higher-order operations
+
+;;; Frames
+
+;;; Painters
+
+;;; Transforming and combining painters
+
+;;; Levels of language for robust design
+
+;;;
+;;; 2.3 Symbolic Data
+;;;
+
+;;; 2.3.1 Quotation
+
+(define (memq item x)
+  (cond ((null? x) false)
+        ((eq? item (car x)) x)
+        (else (memq item (cdr x)))))
