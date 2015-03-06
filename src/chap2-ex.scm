@@ -370,7 +370,7 @@
 
 ;;; Exercise 2.33
 
-(define (map p sequence)
+(define (my-map p sequence)
   (accumulate (lambda (x y) (cons (p x) y)) '() sequence))
 
 (define (append seq1 seq2)
@@ -391,3 +391,111 @@
   (accumulate + 0 (map (lambda (n) (if (pair? n)
                                        (count-leaves n)
                                        1)) t)))
+
+;;; Exercise 2.36
+
+(define (accumulate-n op init seqs)
+  (if (null? (car seqs))
+      '()
+      (cons (accumulate op init (map car seqs))
+            (accumulate-n op init (map cdr seqs)))))
+
+;;; Exercise 2.37
+
+(define (dot-product v w)
+  (accumulate + 0 (map * v w)))
+
+(define (matrix-*-vector m v)
+  (map (lambda (x) (dot-product x v)) m))
+
+(define (transpose mat)
+  (accumulate-n cons '() mat))
+
+(define (matrix-*-matrix m n)
+  (let ((cols (transpose n)))
+    (map (lambda (x) (matrix-*-vector cols x)) m)))
+
+;;; Exercise 2.38
+
+(define (fold-left op initial sequence)
+  (define (iter result rest)
+    (if (null? rest)
+        result
+        (iter (op result (car rest))
+              (cdr rest))))
+  (iter initial sequence))
+
+(define (fold-right op initial sequence)
+  (accumulate op initial sequence))
+
+;;; Exercise 2.39
+
+(define (reverse sequence)
+  (fold-right (lambda (x y) (append y (list x))) '() sequence))
+
+(define (reverse sequence)
+  (fold-left (lambda (x y) (cons y x)) '() sequence))
+
+;;; Exercise 2.40
+
+(define (unique-pairs n)
+  (flatmap (lambda (i)
+             (map (lambda (j) (list i j)) (enumerate-interval 1 (- i 1))))
+           (enumerate-interval 1 n)))
+
+(define (prime-sum-pairs n)
+  (map make-pair-sum (unique-pairs n)))
+
+;;; Exercise 2.41
+
+(define (ordered-triples n)
+  (flatmap (lambda (i)
+             (flatmap (lambda (j)
+                        (map (lambda (k) (list i j k))
+                             (enumerate-interval 1 (- j 1))))
+                      (enumerate-interval 1 (- i 1))))
+           (enumerate-interval 1 n)))
+
+(define (ordered-triple-sum n s)
+  (filter (lambda (triple) (= s (accumulate + 0 triple))) (ordered-triples n)))
+
+;;; Exercise 2.42
+
+(define (queens board-size)
+  (define (queen-cols k)
+    (if (= k 0)
+        (list empty-board)
+        (filter (lambda (positions) (safe? k positions))
+                (flatmap (lambda (rest-of-queens)
+                           (map (lambda (new-row)
+                                  (adjoin-position new-row k rest-of-queens))
+                                (enumerate-interval 1 board-size)))
+                         (queen-cols (- k 1))))))
+  (queen-cols board-size))
+
+(define (make-position row col)
+  (cons row col))
+
+(define (position-row position)
+  (car position))
+
+(define (position-col position)
+  (cdr position))
+
+(define empty-board '())
+
+(define (adjoin-position row col position)
+  (append position (list (make-position row col))))
+
+(define (safe? col position)
+  (let ((kth-queen (list-ref position (- col 1)))
+        (rest-of-queens (filter (lambda (q) (not (= col (position-col q))))
+                                position)))
+    (define (attacks q1 q2)
+      (or (= (position-row q1) (position-row q2))
+          (= (abs (- (position-row q1) (position-row q2)))
+             (abs (- (position-col q1) (position-col q2))))))
+    (define (iter-safe? q board)
+      (or (null? board) (and (not (attacks q (car board)))
+                             (iter-safe? q (cdr board)))))
+    (iter-safe? kth-queen rest-of-queens)))
