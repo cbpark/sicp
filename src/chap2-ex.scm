@@ -705,12 +705,12 @@
 (define (intersection-set set1 set2)
   (define (intersection-list list1 list2)
     (if (or (null? list1) (null? list2))
-      '()
-      (let ((x1 (car list1))
-            (x2 (car list2)))
-        (cond ((= x1 x2) (cons x1 (intersection-list (cdr list1) (cdr list2))))
-              ((< x1 x2) (intersection-list (cdr list1) list2))
-              (else (intersection-list list1 (cdr list2)))))))
+        '()
+        (let ((x1 (car list1))
+              (x2 (car list2)))
+          (cond ((= x1 x2) (cons x1 (intersection-list (cdr list1) (cdr list2))))
+                ((< x1 x2) (intersection-list (cdr list1) list2))
+                (else (intersection-list list1 (cdr list2)))))))
   (list->tree (intersection-list (tree->list-1 set1)
                                  (tree->list-1 set2))))
 
@@ -722,3 +722,56 @@
         ((< given-key (ket (entry tree-of-records)))
          (lookup given-key (left-branch tree-of-records)))
         (else (lookup given-key (right-branch tree-of-records)))))
+
+;;; Exercise 2.67
+
+(define (left-branch tree)
+  (car tree))
+
+(define (right-branch tree)
+  (cadr tree))
+
+(define sample-tree
+  (make-code-tree (make-leaf 'A 4)
+                  (make-code-tree (make-leaf 'B 2)
+                                  (make-code-tree (make-leaf 'D 1)
+                                                  (make-leaf 'C 1)))))
+
+(define sample-message '(0 1 1 0 0 1 0 1 0 1 1 1 0))
+
+;;; Exercise 2.68
+
+(define (encode message tree)
+  (if (null? message)
+      '()
+      (append (encode-symbol (car message) tree)
+              (encode (cdr message) tree))))
+
+(define (encode-symbol symbol tree)
+  (define (element-of-symbols? x symbols)
+    (cond ((null? symbols) false)
+          ((equal? x (car symbols)) true)
+          (else (element-of-symbols? x (cdr symbols)))))
+  (cond ((leaf? tree) '())
+        ((element-of-symbols? symbol (symbols (left-branch tree)))
+         (cons 0 (encode-symbol symbol (left-branch tree))))
+        ((element-of-symbols? symbol (symbols (right-branch tree)))
+         (cons 1 (encode-symbol symbol (right-branch tree))))
+        (else (error "bad symbol: ENCODE-SYMBOL" symbol))))
+
+;;; Exercise 2.69
+
+(define (adjoin-set x set)
+  (cond ((null? set) (list x))
+        ((< (weight x) (weight (car set))) (cons x set))
+        (else (cons (car set)
+                    (adjoin-set x (cdr set))))))
+
+(define (generate-huffman-tree pairs)
+  (successive-merge (make-leaf-set pairs)))
+
+(define (successive-merge set)
+  (cond ((null? set) '())
+        ((null? (cdr set)) (car set))
+        (else (successive-merge (adjoin-set (make-code-tree (car set) (cadr set))
+                                            (cddr set))))))
