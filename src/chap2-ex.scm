@@ -509,3 +509,216 @@
                                         (equal? (cdr a) (cdr b))))
         ((or (pair? a) (pair? b)) false)
         (else (eq? a b))))
+
+;;; Exercise 2.56
+
+(define (deriv exp var)
+  (cond ((number? exp) 0)
+        ((variable? exp) (if (same-variable? exp var)
+                             1
+                             0))
+        ((sum? exp) (make-sum (deriv (addend exp) var)
+                              (deriv (augend exp) var)))
+        ((product? exp) (make-sum (make-product (multiplier exp)
+                                                (deriv (multiplicand exp) var))
+                                  (make-product (deriv (multiplier exp) var)
+                                                (multiplicand exp))))
+        ((exponentiation? exp)
+         (make-product
+          (make-product (exponent exp) (make-exponent (base exp) (make-sum (exponent exp) -1)))
+          (deriv (base exp) var)))
+        (else (error "unknown expression type: DERIV" exp))))
+
+(define (exponentiation? x)
+  (and (pair? x) (eq? (car x) '**)))
+
+(define (base u)
+  (cadr u))
+
+(define (exponent u)
+  (caddr u))
+
+(define (make-exponent u n)
+  (list '** u n))
+
+;;; Exercise 2.57
+
+(define (augend s)
+  (if (null? (cdddr s))
+      (caddr s)
+      (cons '+ (cddr s))))
+
+(define (multiplicand p)
+  (if (null? (cdddr p))
+      (caddr p)
+      (cons '* (cddr p))))
+
+;;; Exercise 2.58
+
+(define (sum?-infix x)
+  (and (pair? x) (eq? (cadr x) '+)))
+
+(define (addend-infix s)
+  (car s))
+
+(define (augend-infix s)
+  (caddr s))
+
+(define (product?-infix x)
+  (and (pair? x) (eq? (cadr x) '*)))
+
+(define (multiplier-infix p)
+  (car p))
+
+(define (multiplicand-infix p)
+  (caddr p))
+
+(define (make-sum-infix a1 a2)
+  (cond ((=number? a1 0) a2)
+        ((=number? a2 0) a1)
+        ((and (number? a1) (number? a2)) (+ a1 a2))
+        (else (list a1 '+ a2))))
+
+(define (make-product-infix m1 m2)
+  (cond ((or (=number? m1 0) (=number? m2 0)) 0)
+        ((=number? m1 1) m2)
+        ((=number? m2 1) m1)
+        ((and (number? m1) (number? m2)) (* m1 m2))
+        (else (list m1 '* m2))))
+
+(define (deriv-infix exp var)
+  (cond ((number? exp) 0)
+        ((variable? exp) (if (same-variable? exp var)
+                             1
+                             0))
+        ((sum?-infix exp) (make-sum-infix (deriv-infix (addend-infix exp) var)
+                                          (deriv-infix (augend-infix exp) var)))
+        ((product?-infix exp)
+         (make-sum-infix
+          (make-product-infix (multiplier-infix exp)
+                              (deriv-infix (multiplicand-infix exp) var))
+          (make-product-infix (deriv-infix (multiplier-infix exp) var)
+                              (multiplicand-infix exp))))
+        (else (error "unknown expression type: DERIV-INFIX" exp))))
+
+;;; Exercise 2.59
+
+(define (union-set set1 set2)
+  (cond ((null? set1) set2)
+        ((null? set2) set1)
+        ((element-of-set? (car set1) set2) (union-set (cdr set1) set2))
+        (else (cons (car set1) (union-set (cdr set1) set2)))))
+
+;;; Exercise 2.60
+
+(define (adjoin-set-dup x set)
+  (cons x set))
+
+(define (union-set-dup set1 set2)
+  (append set1 set2))
+
+;;; Exercise 2.61
+
+(define (adjoin-set x set)
+  (cond ((null? set) (cons x '()))
+        ((= x (car set)) set)
+        ((< x (car set)) (cons x set))
+        (else (cons (car set) (adjoin-set x (cdr set))))))
+
+;;; Exercise 2.62
+
+(define (union-set set1 set2)
+  (cond ((null? set1) set2)
+        ((null? set2) set1)
+        (else (let ((x1 (car set1))
+                    (x2 (car set2)))
+                (cond ((= x1 x2) (cons x1 (union-set (cdr set1) (cdr set2))))
+                      ((< x1 x2) (cons x1 (union-set (cdr set1) set2)))
+                      (else (cons x2 (union-set set1 (cdr set2)))))))))
+
+;;; Exercise 2.63
+
+(define (entry tree)
+  (car tree))
+
+(define (left-branch tree)
+  (cadr tree))
+
+(define (right-branch tree)
+  (caddr tree))
+
+(define (tree->list-1 tree)
+  (if (null? tree)
+      '()
+      (append (tree->list-1 (left-branch tree))
+              (cons (entry tree)
+                    (tree->list-1 (right-branch tree))))))
+
+(define (tree->list-2 tree)
+  (define (copy-to-list tree result-list)
+    (if (null? tree)
+        result-list
+        (copy-to-list (left-branch tree)
+                      (cons (entry tree)
+                            (copy-to-list (right-branch tree) result-list)))))
+  (copy-to-list tree '()))
+
+;;; Exercise 2.64
+
+(define (list->tree elements)
+  (car (partial-tree elements (length elements))))
+
+(define (partial-tree elts n)
+  (if (= n 0)
+      (cons '() elts)
+      (let ((left-size (quotient (- n 1) 2)))
+        (let ((left-result (partial-tree elts left-size)))
+          (let ((left-tree (car left-result))
+                (non-left-elts (cdr left-result))
+                (right-size (- n (+ left-size 1))))
+            (let ((this-entry (car non-left-elts))
+                  (right-result (partial-tree (cdr non-left-elts) right-size)))
+              (let ((right-tree (car right-result))
+                    (remaining-elts (cdr right-result)))
+                (cons (make-tree this-entry
+                                 left-tree
+                                 right-tree)
+                      remaining-elts))))))))
+
+;;; Exercise 2.65
+
+(define (union-set set1 set2)
+  (define (union-list list1 list2)
+    (cond ((null? list1) list2)
+          ((null? list2) list2)
+          (else (let ((x1 (car list1))
+                      (x2 (car list2)))
+                  (cond ((= x1 x2) (cons x1
+                                         (union-list (cdr list1) (cdr list2))))
+                        ((< x1 x2) (cons x1
+                                         (union-list (cdr list1) list2)))
+                        (else (cons x2
+                                    (union-list list1 (cdr list2)))))))))
+  (list->tree (union-list (tree->list-1 set1)
+                          (tree->list-1 set2))))
+
+(define (intersection-set set1 set2)
+  (define (intersection-list list1 list2)
+    (if (or (null? list1) (null? list2))
+      '()
+      (let ((x1 (car list1))
+            (x2 (car list2)))
+        (cond ((= x1 x2) (cons x1 (intersection-list (cdr list1) (cdr list2))))
+              ((< x1 x2) (intersection-list (cdr list1) list2))
+              (else (intersection-list list1 (cdr list2)))))))
+  (list->tree (intersection-list (tree->list-1 set1)
+                                 (tree->list-1 set2))))
+
+;;; Exercise 2.66
+
+(define (lookup given-key tree-of-records)
+  (cond ((null? tree-of-records) false)
+        ((= given-key (key (entry tree-of-records))) (entry tree-of-records))
+        ((< given-key (ket (entry tree-of-records)))
+         (lookup given-key (left-branch tree-of-records)))
+        (else (lookup given-key (right-branch tree-of-records)))))
