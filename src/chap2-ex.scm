@@ -775,3 +775,49 @@
         ((null? (cdr set)) (car set))
         (else (successive-merge (adjoin-set (make-code-tree (car set) (cadr set))
                                             (cddr set))))))
+
+;;; Exercise 2.73
+
+(define (deriv exp var)
+  (cond ((number? exp) 0)
+        ((variable? exp) (if (same-variable? exp var)
+                             1
+                             0))
+        (else ((get 'deriv (operator exp))
+               (operands exp) var))))
+
+(define (operator exp) (car exp))
+(define (operands exp) (cdr exp))
+
+(define (install-deriv-package)
+  (define (deriv-sum exp var)
+    (make-sum (deriv (car exp) var)
+              (deriv (cadr exp) var)))
+  (define (deriv-product exp var)
+    (make-sum (make-product (car exp)
+                            (deriv (cadr exp) var))
+              (make-product (deriv (car exp) var)
+                            (cadr exp))))
+  (define (deriv-exponent exp var)
+    (make-product (make-product (cadr exp)
+                                (make-exponent (car exp)
+                                               (make-sum (cadr exp) -1)))
+                  (deriv (car exp) var)))
+
+  (put 'deriv '+ deriv-sum)
+  (put 'deriv '* deriv-product)
+  (put 'deriv '** deriv-exponent)
+  'done)
+
+(install-deriv-package)
+
+;;; Exercise 2.75
+
+(define (make-from-mag-ang r a)
+  (define (dispatch op)
+    (cond ((eq? op 'real-part) (* r (cos a)))
+          ((eq? op 'imag-part) (* r (sin a)))
+          ((eq? op 'magnitude) r)
+          ((eq? op 'angle) a)
+          (else (error "Unknown op: MAKE-FROM-MAG-ANG" op))))
+  dispatch)
