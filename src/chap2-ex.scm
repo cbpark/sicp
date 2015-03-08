@@ -821,3 +821,117 @@
           ((eq? op 'angle) a)
           (else (error "Unknown op: MAKE-FROM-MAG-ANG" op))))
   dispatch)
+
+;;; Exercise 2.77 - 2.80
+;;; See chap2.scm
+
+;;; Exercise 2.81
+
+(define (apply-generic op . args)
+  (let ((type-tags (map type-tags args)))
+    (let ((proc (get op type-tags)))
+      (if proc
+          (apply proc (map contents args))
+          (if (= (length args) 2)
+              (let ((type1 (car type-tags))
+                    (type2 (cadr type-tags))
+                    (a1 (car args))
+                    (a2 (cadr args)))
+                (if (equal? type1 type2)
+                    (error "No method for these types"
+                           (list op type-tags))
+                    (let ((t1->t2 (get-coercion type1 type2))
+                          (t2->t1 (get-coercion type2 type1)))
+                      (cond (t1->t2 (apply-generic op (t1->t2 a1) a2))
+                            (t2->t1 (apply-generic op a1 (t2->t1 a2)))
+                            (else (error "No method for these types"
+                                         (list op type-tags)))))))
+              (error "No method for these types"
+                     (list op type-tags)))))))
+
+;;; Exercise 2.82
+
+(define (apply-generic op . args)
+  (define (can-coerced-into types target-type)
+    (and (map (lambda (type)
+                (or (equal? type target-type)
+                    (get-coercion type target-type)))
+              types)))
+  (define (find-coerced-type types)
+    (or (map (lambda (target-type)
+               (if (can-coerced-into types target-type)
+                   target-type
+                   false)))
+        types))
+  (define (coerce-to target-type)
+    (map (lambda (arg)
+           (let ((arg-type (type-tag arg)))
+             (if (equal? arg-type target-type)
+                 arg
+                 ((get-coercion arg-type target-type) arg))))
+         args))
+  (let ((type-tags (map type-tag args)))
+    (let ((proc (get op type-tags)))
+      (if proc
+          (apply proc (map contents args))
+          (let ((target-type (find-coerced-type type-tags)))
+            (if target-type
+                (apply-generic op (coerce-to target-type))
+                (error "No method for these types"
+                       (list op type-tags))))))))
+
+;;; Exercise 2.83
+;;; See chap2.scm
+
+;;; Exercise 2.84
+
+(define (apply-generic op . args)
+  (define (raise-to source target)
+    (let ((source-type (type-tag source))
+          (target-type (type-tag target)))
+      (let ((raise-proc (get 'raise (list source-type))))
+        (cond ((equal? source-type target-type) source)
+              (raise-proc (raise-to (raise-proc (contents source)) target))
+              (else false)))))
+  (let ((type-tags (map type-tags args)))
+    (let ((proc (get op type-tags)))
+      (if proc
+          (apply proc (map contents args))
+          (if (= (length args) 2)
+              (let ((a1 (car args))
+                    (a2 (cadr args))
+                    (raise1 (raise-to a1 a2))
+                    (raise2 (raise-to a2 a1)))
+                (cond (raise1 (apply-generic op raise1 a2))
+                      (raise2 (apply-generic op a1 raise2))
+                      (else (error "No method for these types"
+                                   (list op type-tags) ))))
+              (error "No method for these types"
+                     (list op type-tags)))))))
+
+;;; Exercise 2.85
+;;; See also chap2.scm
+
+(define (apply-generic op . args)
+  (define (raise-to source target)
+    (let ((source-type (type-tag source))
+          (target-type (type-tag target)))
+      (let ((raise-proc (get 'raise (list source-type))))
+        (cond ((equal? source-type target-type) source)
+              (raise-proc (raise-to (raise-proc (contents source)) target))
+              (else false)))))
+  (let ((type-tags (map type-tags args)))
+    (let ((proc (get op type-tags)))
+      (if proc
+          (drop (apply proc (map contents args)))
+          (if (= (length args) 2)
+              (let ((a1 (car args))
+                    (a2 (cadr args))
+                    (raise1 (raise-to a1 a2))
+                    (raise2 (raise-to a2 a1)))
+                (cond (raise1 (apply-generic op raise1 a2))
+                      (raise2 (apply-generic op a1 raise2))
+                      (else (error "No method for these types"
+                                   (list op type-tags) ))))
+              (error "No method for these types"
+                     (list op type-tags)))))))
