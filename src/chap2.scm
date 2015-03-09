@@ -836,6 +836,8 @@
   (put '=zero? '(scheme-number) (lambda (x) (= x 0)))
   ;; Exercise 2.83
   (put 'raise '(scheme-number) (lambda (x) (make-rational x 1)))
+  ;; Exercise 2.88
+  (put 'negate '(scheme-number) (lambda (x) (tag (- n))))
   (put 'make 'scheme-number (lambda (x) (tag x)))
   'done)
 
@@ -889,6 +891,9 @@
   (put 'project '(rational) (lambda (x)
                               (make-scheme-number
                                (round (/ (numer x) (denom x))))))
+  ;; Exercise 2.88
+  (put 'negate '(rational) (lambda (x)
+                             (tag (make-rat (- (numer x)) (denom x)))))
   (put 'make 'rational
        (lambda (n d) (tag (make-rat n d))))
   'done)
@@ -913,6 +918,8 @@
                           (let ((rat (rationalize x)))
                             (make-rational (numerator rat)
                                            (denominator rat)))))
+  ;; Exercise 2.88
+  (put 'negate '(real) (lambda (x) (tag (- x))))
   (put 'make 'real (lambda (x)
                      (if (real? x)
                          (tag x)
@@ -964,6 +971,10 @@
   (put '=zero? '(complex) =zero?)
   ;; Exercise 2.85
   (put 'project '(complex) (lambda (z) (make-real (real-part z))))
+  ;; Exercise 2.88
+  (put 'negate '(complex) (lambda (z)
+                            (tag (make-from-real-imag (- (real-part z))
+                                                      (- (imag-part z))))))
   (put 'make-from-real-imag 'complex
        (lambda (x y) (tag (make-from-real-imag x y))))
   (put 'make-from-mag-ang 'complex
@@ -1007,3 +1018,136 @@
 ;;; Hierarchies of types
 
 ;;; Inadequacies of hierarchies
+
+;;; 2.5.3 Example: Symbolic Algebra
+
+;;; Arithmetic on polynomials
+
+(define (install-polynomial-package)
+  ;; internal procedures
+  ;; representation of poly
+  (define (make-poly variable term-list) (cons variable term-list))
+  (define (variable p) (car p))
+  (define (term-list p) (cdr p))
+  (define (same-variable? v1 v2)
+    (and (variable? v1) (variable? v2) (eq? v1 v2)))
+  (define (variable? x) (symbol? x))
+
+  ;; representation of terms and term lists
+  (define (add-poly p1 p2)
+    (if (same-variable? (variable p1) (variable p2))
+        (make-poly (variable p1)
+                   (add-terms (term-list p1) (term-list p2)))
+        (error "Polys not in same var: ADD-POLY" (list p1 p2))))
+  (define (add-terms L1 L2)
+    (cond ((empty-termlist? L1) L2)
+          ((empty-termlist? L2) L1)
+          (else (let ((t1 (first-term L1))
+                      (t2 (first-term L2)))
+                  (cond ((> (order t1) (order t2))
+                         (adjoin-term t1 (add-terms (rest-terms L1) L2)))
+                        ((< (order t1) (order t2))
+                         (adjoin-term t2 (add-terms L1 (rest-terms L2))))
+                        (else
+                         (adjoin-term (make-term (order t1)
+                                                 (add (coeff t1) (coeff t2)))
+                                      (add-terms (rest-terms L1)
+                                                 (rest-terms L2)))))))))
+  (define (mul-poly p1 p2)
+    (if (same-variable? (variable p1) (variable p2))
+        (make-poly (variable p1)
+                   (mul-terms (term-list p1) (term-list p2)))
+        (error "Polys not in same var: MUL-POLY" (list p1 p2))))
+  (define (mul-terms L1 L2)
+    (if (empty-termlist? L1)
+        (the-empty-termlist)
+        (add-terms (mul-terms-by-all-terms (first-term L1) L2)
+                   (mul-terms (rest-terms L1) L2))))
+  (define (mul-terms-by-all-terms t1 L)
+    (if (empty-termlist? L)
+        (the-empty-termlist)
+        (let ((t2 (first-term L)))
+          (adjoin-term (make-term (+ (order t1) (order t2))
+                                  (mul (coeff t1) (coeff t2)))
+                       (mul-terms-by-all-terms t1 (rest-terms L))))))
+  (define (adjoin-term term term-list)
+    (if (=zero? (coeff term))
+        term-list
+        (cons terms term-list)))
+  (define (the-empty-termlist) '())
+  (define (first-term term-list) (car term-list))
+  (define (rest-terms term-list) (cdr term-list))
+  (define (empty-termlist? term-list) (null? term-list))
+  (define (make-term order coeff) (list order coeff))
+  (define (order term) (car term))
+  (define (coeff term) (cadr term))
+  ;; Exercise 2.87
+  (define (=zero? p)
+    (define (zero-term terms)
+      (or (empty-termlist? term)
+          (and (=zero? (coeff (first-term terms)))
+               (zero-term (rest-terms terms)))))
+    (zero-term (term-list p)))
+  ;; Exercise 2.88
+  (define (negate-terms terms)
+    (if (empty-termlist? terms)
+        (the-empty-termlist)
+        (let ((t1 (first-term terms)))
+          (adjoin-term (make-term (order t1) (negate (coeff t1)))
+                       (negate-terms (rest-terms terms))))))
+  ;; Exercise 2.91
+  (define (div-terms L1 L2)
+    (if (empty-termlist? L1)
+        (list (the-empty-termlist) (the-empty-termlist))
+        (let ((t1 (first-term L1))
+              (t2 (first-term L2)))
+          (if (> (order t2) (order t1))
+              (list (the-empty-termlist) L1)
+              (let ((new-c (div (coeff L1) (coeff L2)))
+                    (new-o (- (order t1) (order t2))))
+                (let ((rest-of-result
+                       (div-terms
+                        (add-terms
+                         L1
+                         (negate-terms (mul-terms-by-all-terms
+                                        (make-term new-o new-c) L2)))
+                        L2)))
+                  (list (adjoin-term (make-term new-o new-c)
+                                     (car rest-of-result))
+                        (cadr rest-of-result))))))))
+  (define (div-poly p1 p2)
+    (if (same-variable? (variable p1) (variable p2))
+        (let ((var (variable p1))
+              (result (div-terms (term-list p1) (term-list p2))))
+          (list (make-poly var (car result))
+                (make-poly var (cadr result))))))
+
+  ;; interface to rest of the system
+  (define (tag p) (attach-tag 'polynomial p))
+  (put 'add '(polynomial polynomial)
+       (lambda (p1 p2) (tag (add-poly p1 p2))))
+  (put 'mul '(polynomial polynomial)
+       (lambda (p1 p2) (tag (mul-poly p1 p2))))
+  ;; Exercise 2.87
+  (put '=zero? '(polynomial) =zero?)
+  ;; Exercise 2.88
+  (put 'negate '(polynomial)
+       (lambda (p) (tag (make-poly (variable p) (negate-terms (term-list p))))))
+  (put 'sub '(polynomial polynomial)
+       (lambda (p1 p2) (tag (add-poly p1 (negate p2)))))
+  ;; Exercise 2.91
+  (put 'div '(polynomial polynomial)
+       (lambda (p1 p2) (tag (div-poly p1 p2))))
+  (put 'make 'polynomial
+       (lambda (var terms) (tag (make-poly var terms))))
+  'done)
+
+;;; Representing term lists
+
+(define (make-polynomial var terms)
+  ((get 'make 'polynomial) var terms))
+
+;; Exercise 2.88
+(define (negate x) (apply-generic 'negate x))
+
+;;; Hierarchies of types in symbolic algebra
