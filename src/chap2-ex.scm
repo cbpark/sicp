@@ -1022,5 +1022,5 @@
        (lambda (var terms) (tag (make-poly var terms))))
   'done)
 
-;;; Exercise 2.91
+;;; Exercise 2.91, 2.93 - 2.94
 ;;; See chap2.scm

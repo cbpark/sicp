@@ -591,7 +591,7 @@
 
 (define (contents datum)
   (cond ((number? datum) datum)
-        ((pair? datum) (cadr datum))
+        ((pair? datum) (cdr datum))
         (else (error "Bad tagged datum: CONTENTS" datum))))
 
 (define (rectangular? z)
@@ -837,7 +837,10 @@
   ;; Exercise 2.83
   (put 'raise '(scheme-number) (lambda (x) (make-rational x 1)))
   ;; Exercise 2.88
-  (put 'negate '(scheme-number) (lambda (x) (tag (- n))))
+  (put 'negate '(scheme-number) (lambda (x) (tag (- x))))
+  ;; Exercise 2.94
+  (put 'greatest-common-divisor '(scheme-number scheme-number)
+       (lambda (x y) (tag (gcd x y))))
   (put 'make 'scheme-number (lambda (x) (tag x)))
   'done)
 
@@ -850,9 +853,12 @@
   ;; internal procedures
   (define (numer x) (car x))
   (define (denom x) (cadr x))
+  ;; (define (make-rat n d)
+  ;;   (let ((g (gcd n d)))
+  ;;     (cons (/ n g) (/ d g))))
+  ;; Exercise 2.93
   (define (make-rat n d)
-    (let ((g (gcd n d)))
-      (cons (/ n g) (/ d g))))
+    (cons n d))
   (define (add-rat x y)
     (make-rat (+ (* (numer x) (denom y))
                  (* (numer y) (denom x)))
@@ -996,24 +1002,24 @@
 (define (scheme-number->complex n)
   (make-complex-from-real-imag (contents n) 0))
 
-(define (apply-generic op . args)
-  (let ((type-tags (map type-tags args)))
-    (let ((proc (get op type-tags)))
-      (if proc
-          (apply proc (map contents args))
-          (if (= (length args) 2)
-              (let ((type1 (car type-tags))
-                    (type2 (cadr type-tags))
-                    (a1 (car args))
-                    (a2 (cadr args)))
-                (let ((t1->t2 (get-coercion type1 type2))
-                      (t2->t1 (get-coercion type2 type1)))
-                  (cond (t1->t2 (apply-generic op (t1->t2 a1) a2))
-                        (t2->t1 (apply-generic op a1 (t2->t1 a2)))
-                        (else (error "No method for these types"
-                                     (list op type-tags))))))
-              (error "No method for these types"
-                     (list op type-tags)))))))
+;; (define (apply-generic op . args)
+;;   (let ((type-tags (map type-tag args)))
+;;     (let ((proc (get op type-tags)))
+;;       (if proc
+;;           (apply proc (map contents args))
+;;           (if (= (length args) 2)
+;;               (let ((type1 (car type-tags))
+;;                     (type2 (cadr type-tags))
+;;                     (a1 (car args))
+;;                     (a2 (cadr args)))
+;;                 (let ((t1->t2 (get-coercion type1 type2))
+;;                       (t2->t1 (get-coercion type2 type1)))
+;;                   (cond (t1->t2 (apply-generic op (t1->t2 a1) a2))
+;;                         (t2->t1 (apply-generic op a1 (t2->t1 a2)))
+;;                         (else (error "No method for these types"
+;;                                      (list op type-tags))))))
+;;               (error "No method for these types"
+;;                      (list op type-tags)))))))
 
 ;;; Hierarchies of types
 
@@ -1073,7 +1079,7 @@
   (define (adjoin-term term term-list)
     (if (=zero? (coeff term))
         term-list
-        (cons terms term-list)))
+        (cons term term-list)))
   (define (the-empty-termlist) '())
   (define (first-term term-list) (car term-list))
   (define (rest-terms term-list) (cdr term-list))
@@ -1082,12 +1088,11 @@
   (define (order term) (car term))
   (define (coeff term) (cadr term))
   ;; Exercise 2.87
-  (define (=zero? p)
-    (define (zero-term terms)
-      (or (empty-termlist? term)
-          (and (=zero? (coeff (first-term terms)))
-               (zero-term (rest-terms terms)))))
-    (zero-term (term-list p)))
+  (define (=zero? x)
+    (define (poly? x) (pair? x))
+    (cond ((number? x) (= x 0))
+          ((poly? x) false)
+          (else (error "Unknown type" x))))
   ;; Exercise 2.88
   (define (negate-terms terms)
     (if (empty-termlist? terms)
@@ -1103,24 +1108,34 @@
               (t2 (first-term L2)))
           (if (> (order t2) (order t1))
               (list (the-empty-termlist) L1)
-              (let ((new-c (div (coeff L1) (coeff L2)))
+              (let ((new-c (div (coeff t1) (coeff t2)))
                     (new-o (- (order t1) (order t2))))
-                (let ((rest-of-result
-                       (div-terms
-                        (add-terms
-                         L1
-                         (negate-terms (mul-terms-by-all-terms
-                                        (make-term new-o new-c) L2)))
-                        L2)))
-                  (list (adjoin-term (make-term new-o new-c)
-                                     (car rest-of-result))
-                        (cadr rest-of-result))))))))
+                (let ((new-t (make-term new-o new-c)))
+                  (let ((mult (mul-terms L2 (list new-t))))
+                    (let ((diff (add-terms L1 (negate-terms mult))))
+                      (let ((rest-of-result (div-terms diff L2)))
+                        (list (cons new-t (car rest-of-result))
+                              (cadr rest-of-result)))))))))))
   (define (div-poly p1 p2)
     (if (same-variable? (variable p1) (variable p2))
         (let ((var (variable p1))
               (result (div-terms (term-list p1) (term-list p2))))
           (list (make-poly var (car result))
-                (make-poly var (cadr result))))))
+                (make-poly var (cadr result))))
+        (error "Polys not in same var" (list p1 p2))))
+  ;; Exercise 2.93
+  (define (gcd-terms a b)
+    (if (empty-termlist? b)
+        a
+        (gcd-terms b (remainder-terms a b))))
+  ;; Exercise 2.94
+  (define (remainder-terms L1 L2)
+    (cadr (div-terms L1 L2)))
+  (define (gcd-poly p1 p2)
+    (if (same-variable? (variable p1) (variable p2))
+        (make-poly (variable p1)
+                   (gcd-terms (term-list p1) (term-list p2)))
+        (error "Not the same var" (list p1 p2))))
 
   ;; interface to rest of the system
   (define (tag p) (attach-tag 'polynomial p))
@@ -1134,10 +1149,18 @@
   (put 'negate '(polynomial)
        (lambda (p) (tag (make-poly (variable p) (negate-terms (term-list p))))))
   (put 'sub '(polynomial polynomial)
-       (lambda (p1 p2) (tag (add-poly p1 (negate p2)))))
+       (lambda (p1 p2)
+         (tag (add-poly p1 (make-poly (variable p2)
+                                      (negate-terms (term-list p2)))))))
   ;; Exercise 2.91
   (put 'div '(polynomial polynomial)
-       (lambda (p1 p2) (tag (div-poly p1 p2))))
+       (lambda (p1 p2)
+         (let ((result (div-poly p1 p2)))
+           (list (tag (car result))
+                 (tag (cadr result))))))
+  ;; Exercise 2.94
+  (put 'greatest-common-divisor '(polynomial polynomial)
+       (lambda (p1 p2) (tag (gcd-poly p1 p2))))
   (put 'make 'polynomial
        (lambda (var terms) (tag (make-poly var terms))))
   'done)
@@ -1151,3 +1174,9 @@
 (define (negate x) (apply-generic 'negate x))
 
 ;;; Hierarchies of types in symbolic algebra
+
+;;; Extended exercise: Rational functions
+
+;; Exercise 2.93
+(define (greatest-common-divisor a b)
+  (apply-generic 'greatest-common-divisor a b))
