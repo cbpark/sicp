@@ -308,3 +308,133 @@
         (cons (car q)
               (print (cddr q)))))
   (display (print (front-ptr deque))))
+
+;;; Exercise 3.24
+
+(define (make-table same-key?)
+  (let ((local-table (list '*table*)))
+    (define (assoc key records)
+      (cond ((null? records) false)
+            ((same-key? key (caar records)) (car records))
+            (else (assoc key (cdr records)))))
+    (define (lookup key-1 key-2)
+      (let ((subtable (assoc key-1 (cdr local-table))))
+        (if subtable
+            (let ((record (assoc key-2 (cdr subtable))))
+              (if record
+                  (cdr record)
+                  false))
+            false)))
+    (define (insert! key-1 key-2 value)
+      (let ((subtable (assoc key-1 (cdr local-table))))
+        (if subtable
+            (let ((record (assoc key-2 (cdr subtable))))
+              (if record
+                  (set-cdr! record value)
+                  (set-cdr! subtable (cons (cons key-2 value)
+                                           (cdr subtable)))))
+            (set-cdr! local-table (cons (list key-1 (cons key-2 value))
+                                        (cdr local-table)))))
+      'ok)
+    (define (dispatch m)
+      (cond ((eq? m 'lookup-proc) lookup)
+            ((eq? m 'insert-proc!) insert!)
+            (else (error "Unknown operation: TABLE" m))))
+    dispatch))
+
+;;; Exercise 3.25
+
+(define (make-table same-key?)
+  (let ((local-table (list '*table*)))
+    (define (assoc key records)
+      (cond ((null? records) false)
+            ((same-key? key (caar records)) (car records))
+            (else (assoc key (cdr records)))))
+    (define (lookup keys)
+      (define (iter table keys)
+        (cond ((null? table) false)
+              ((null? keys) false)
+              (else (iter (assoc (car keys) (cdr table)))))
+        (iter local-table keys)))
+    (define (insert! keys value)
+      (define (iter keys table)
+        (if (null? keys)
+            (set-cdr! table value)
+            (let ((subtable (assoc (car keys) (cdr table))))
+              (if subtable
+                  (iter (cdr keys) subtable)
+                  (append-item keys value table)))))
+      (define (append-item keys value table)
+        (if (null? keys)
+            (set-cdr! table value)
+            (let ((new-record (list (car keys))))
+              (set-cdr! table (cons new-record (cdr table)))
+              (append-item (cdr keys) value new-record))))
+      (iter keys local-table)
+      'ok)
+    (define (dispatch m)
+      (cond ((eq? m 'lookup-proc) lookup)
+            ((eq? m 'insert-proc!) insert!)
+            (else (error "Unknown operation: TABLE" m))))
+    dispatch))
+
+;;; Exercise 3.26
+
+(define (make-tree entry left right) (list entry left right))
+(define (entry tree) (car tree))
+(define (left-branch tree) (cadr tree))
+(define (right-branch tree) (caddr tree))
+
+(define (adjoin-set x set)
+  (cond ((null? set) (make-tree x '() '()))
+        ((= (car x) (car (entry set))) set)
+        ((< (car x) (car (entry set)))
+         (make-tree (entry set)
+                    (adjoin-set x (left-branch set))
+                    (right-branch set)))
+        (else (make-tree (entry set)
+                         (left-branch set)
+                         (adjoin-set x (right-branch set))))))
+
+(define (make-table)
+  (let ((local-table '()))
+    (define (lookup key records)
+      (cond ((null? records) false)
+            ((= key (car (entry records))) (entry records))
+            ((< key (car (entry records))) (lookup key (left-branch records)))
+            (else (lookup key (right-branch records)))))
+    (define (insert! key value)
+      (let ((record (lookup key local-table)))
+        (if record
+            (set-cdr! record value)
+            (set! local-table (adjoin-set (cons key value) local-table)))))
+    (define (get key)
+      (lookup key local-table))
+    (define (dispatch m)
+      (cond ((eq? m 'get-proc) get)
+            ((eq? m 'insert-proc) insert!)
+            (else (error "Unknown operation: TABLE" m))))
+    dispatch))
+
+;;; Exercise 3.28
+;;; See chap3.scm
+
+;;; Exercise 3.29
+
+(define (or-gate a1 a2 output)
+  (let ((x (make-wire))
+        (y (make-wire))
+        (z (make-wire)))
+    (inverter a1 x)
+    (inverter a2 y)
+    (and-gate x y z)
+    (inverter z output)))
+
+;;; Exercise 3.39
+
+(define (ripple-carry-adder a b s c)
+  (let ((c-in (make-wire)))
+    (if (null? (cdr a))
+        (set-signal! c-in 0)
+        (ripple-carry-adder (cdr a) (cdr b) (cdr s) c-in))
+    (full-adder (car a) (car b) c-in (car s) c)))
