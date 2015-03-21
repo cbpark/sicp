@@ -438,3 +438,61 @@
         (set-signal! c-in 0)
         (ripple-carry-adder (cdr a) (cdr b) (cdr s) c-in))
     (full-adder (car a) (car b) c-in (car s) c)))
+
+;;; Exercise 3.33
+
+(define (averager a b average)
+  (let ((sum (make-connector))
+        (two (make-connector)))
+    (adder a b sum)
+    (constant 2 two)
+    (multiplier two average sum)))
+
+;;; Exercise 3.35
+
+(define (squarer a b)
+  (define (process-new-value)
+    (if (has-value? b)
+        (if (< (get-value b) 0)
+            (error "square less than 0: SQUARER" (get-value b))
+            (set-value! a (sqrt (get-value b)) me))
+        (if (has-value? a)
+            (set-value! b (square (get-value a)) me))))
+  (define (process-forget-value)
+    (forget-value! a me)
+    (forget-value! b me)
+    (process-new-value))
+  (define (me request)
+    (cond ((eq? request 'I-have-a-value) (process-new-value))
+          ((eq? request 'I-lost-my-value) (process-forget-value))
+          (else (error "Unknown request: SQUARER" request))))
+  (connect a me)
+  (connect b me)
+  me)
+
+;;; Exercise 3.37
+
+(define (c+ x y)
+  (let ((z (make-connector)))
+    (adder x y z)
+    z))
+
+(define (c* x y)
+  (let ((z (make-connector)))
+    (multiplier x y z)
+    z))
+
+(define (c/ x y)
+  (let ((z (make-connector)))
+    (multiplier z y x)
+    z))
+
+(define (cv n)
+  (let ((c (make-connector)))
+    (constant n c)
+    c))
+
+(define (celsius-fahrenheit-converter x)
+  (c+ (c* (c/ (cv 9) (cv 5))
+          x)
+      (cv 32)))
