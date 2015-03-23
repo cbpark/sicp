@@ -496,3 +496,103 @@
   (c+ (c* (c/ (cv 9) (cv 5))
           x)
       (cv 32)))
+
+;;; Exercise 3.50
+
+(define (stream-map proc . argstreams)
+  (if (stream-null? (car argstreams))
+      the-empty-stream
+      (cons-stream (apply proc (map stream-car argstreams))
+                   (apply stream-map (cons proc
+                                           (map stream-cdr argstreams))))))
+
+;;; Exercise 3.51
+
+(define (show x)
+  (display-line x)
+  x)
+
+;;; Exercise 3.52
+
+(define sum 0)
+(define (accum x) (set! sum (+ x sum)) sum)
+(define seq (stream-map accum
+                        (stream-enumerate-interval 1 20)))
+(define y (stream-filter even? seq))
+(define z (stream-filter (lambda (x) (= (remainder x 5) 0))
+                         seq))
+
+;;; Exercise 3.54
+
+(define (mul-streams s1 s2)
+  (stream-map * s1 s2))
+
+(define factorials
+  (cons-stream 1 (mul-streams factorials integers)))
+
+;;; Exercise 3.55
+
+(define (partial-sums s)
+  (cons-stream (stream-car s)
+               (add-streams (stream-cdr s) (partial-sums s))))
+
+;;; Exercise 3.56
+
+(define (merge s1 s2)
+  (cond ((stream-null? s1) s2)
+        ((stream-null? s2) s1)
+        (else (let ((s1car (stream-car s1))
+                    (s2car (stream-car s2)))
+                (cond ((< s1car s2car) (cons-stream s1car
+                                                    (merge (stream-cdr s1) s2)))
+                      ((> s1car s2car) (cons-stream s2car
+                                                    (merge s1 (stream-cdr s2))))
+                      (else (cons-stream s1car
+                                         (merge (stream-cdr s1)
+                                                (stream-cdr s2)))))))))
+
+(define S (cons-stream 1 (merge (scale-stream S 2)
+                                (merge (scale-stream S 3)
+                                       (scale-stream S 5)))))
+
+;;; Exercise 3.58
+
+(define (expand num den radix)
+  (cons-stream (quotient (* num radix) den)
+               (expand (remainder (* num radix) den) den radix)))
+
+;;; Exercise 3.59
+
+(define (integrate-series s)
+  (stream-map / s integers))
+
+(define exp-series (cons-stream 1 (integrate-series exp-series)))
+
+(define cosine-series (cons-stream 1 (integrate-series sine-series)))
+(define sine-series (cons-stream 0 (scale-stream (integrate-series cosine-series) -1)))
+
+;;; Exercise 3.60
+
+(define (mul-series s1 s2)
+  (cons-stream (* (stream-car s1) (stream-car s2))
+               (add-streams (scale-stream (stream-cdr s1) (stream-car s2))
+                            (mul-series s1 (stream-cdr s2)))))
+
+;;; Exercise 3.61
+
+(define (invert-unit-series s)
+  (cons-stream 1
+               (scale-stream (mul-series (stream-cdr s) (invert-unit-series s))
+                             -1)))
+
+;;; Exercise 3.62
+
+(define (div-series num denom)
+  (let ((denom-const (stream-car denom)))
+    (if (zero? denom-const)
+        (error "divided by zero: DIV-SERIES" denom-const)
+        (mul-series num (scale-stream (invert-unit-series
+                                       (scale-stream denom (/ 1 denom-const)))
+                                      denom-const)))))
+
+(define tan-series (div-series sine-series cosine-series))
