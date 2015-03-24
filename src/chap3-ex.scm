@@ -596,3 +596,146 @@
                                       denom-const)))))
 
 (define tan-series (div-series sine-series cosine-series))
+
+;;; Exercise 3.64
+
+(define (stream-limit s tolerance)
+  (let ((scdr (stream-cdr s)))
+    (if (< (abs (- (stream-car s) (stream-car scdr))) tolerance)
+        (stream-car scdr)
+        (stream-limit scdr tolerance))))
+
+;; (define (sqrt x tolerance)
+;;   (stream-limit (sqrt-stream x) tolerance))
+
+;;; Exercise 3.65
+
+(define (ln-summands n)
+  (cons-stream (/ 1.0 n)
+               (stream-map - (ln-summands (+ n 1)))))
+
+(define ln-stream (partial-sums (ln-summands 1)))
+
+;;; Exercise 3.67
+
+(define (pairs s t)
+  (cons-stream (list (stream-car s) (stream-car t))
+               (interleave
+                (stream-map (lambda (x) (list (stream-car s) x))
+                            (stream-cdr t))
+                (interleave
+                 (stream-map (lambda (x) (list x (stream-car t)))
+                             (stream-cdr s))
+                 (pairs (stream-cdr s) (stream-cdr t))))))
+
+;;; Exercise 3.69
+
+(define (triples s t u)
+  (cons-stream (list (stream-car s) (stream-car t) (stream-car u))
+               (interleave
+                (stream-map (lambda (x) (append (list (stream-car s)) x))
+                            (stream-cdr (pairs t u)))
+                (triples (stream-cdr s) (stream-cdr t) (stream-cdr u)))))
+
+(define pythagorean-triples
+  (stream-filter (lambda (x)
+                   (= (+ (square (car x))
+                         (square (cadr x)))
+                      (square (caddr x))))
+                 (triples integers integers integers)))
+
+;;; Exercise 3.70
+
+(define (merge-weighted s1 s2 weight)
+  (cond ((stream-null? s1) s2)
+        ((stream-null? s2) s1)
+        (else (let ((s1car (stream-car s1))
+                    (s2car (stream-car s2)))
+                (if (<= (weight s1car) (weight s2car))
+                    (cons-stream s1car
+                                 (merge-weighted (stream-cdr s1)
+                                                 s2
+                                                 weight))
+                    (cons-stream s2car
+                                 (merge-weighted s1
+                                                 (stream-cdr s2)
+                                                 weight)))))))
+
+(define (weighted-pairs s t weight)
+  (cons-stream (list (stream-car s) (stream-car t))
+               (merge-weighted
+                (stream-map (lambda (x) (list (stream-car s) x))
+                            (stream-cdr t))
+                (weighted-pairs (stream-cdr s) (stream-cdr t) weight)
+                weight)))
+
+;;; Exercise 3.71
+
+(define (sum-of-cubes x)
+  (+ (cube (car x)) (cube (cadr x))))
+
+(define (ramanujan-numbers)
+  (define (ramanujans sum-cubes)
+    (let ((current (stream-car sum-cubes))
+          (next (stream-car (stream-cdr sum-cubes))))
+      (let ((ramanujan-num (sum-of-cubes current)))
+        (cond ((= ramanujan-num (sum-of-cubes next))
+               (cons-stream (list ramanujan-num current next)
+                            (ramanujans (stream-cdr (stream-cdr sum-cubes)))))
+              (else (ramanujans (stream-cdr sum-cubes)))))))
+  (ramanujans (weighted-pairs integers integers sum-of-cubes)))
+
+;;; Exercise 3.72
+
+(define (sum-of-squares x)
+  (+ (square (car x)) (square (cadr x))))
+
+(define (square-stream s)
+  (let ((scar (stream-car s))
+        (scadr (stream-car (stream-cdr s)))
+        (scaddr (stream-car (stream-cdr (stream-cdr s)))))
+    (if (= (sum-of-squares scar) (sum-of-squares scadr) (sum-of-squares scaddr))
+        (cons-stream (list (sum-of-squares scar) scar scadr scaddr)
+                     (square-stream (stream-cdr (stream-cdr (stream-cdr s)))))
+        (square-stream (stream-cdr s)))))
+
+(define square-numbers
+  (square-stream (weighted-pairs integers integers sum-of-squares)))
+
+;;; Exercise 3.73
+
+(define (RC r c dt)
+  (lambda (i v0)
+    (add-streams (scale-stream i r)
+                 (integral (scale-stream i (/ 1.0 C)) v0 dt))))
+
+;;; Exercise 3.74
+
+;; (define (make-zero-crossings input-stream last-value)
+;;   (cons-stream (sign-change-detector (stream-car input-stream) last-value)
+;;                (make-zero-crossings (stream-cdr input-stream)
+;;                                     (stream-car input-stream))))
+;; (define zero-crossings (make-zero-crossings sense-data 0))
+
+;; (define zero-crossings
+;;   (stream-map sign-change-detector sense-data (cons-stream 0 sense-data)))
+
+;;; Exercise 3.75
+
+(define (make-zero-crossings input-stream last-value last-avpt)
+  (let ((avpt (/ (+ (stream-car input-stream)
+                    last-value)
+                 2)))
+    (cons-stream (sign-change-detetor avpt last-avpt)
+                 (make-zero-crossings (stream-cdr input-stream)
+                                      (stream-car input-stream)
+                                      avpt))))
+
+;;; Exercise 3.76
+
+(define (smooth s)
+  (stream-map average (cons-stream 0 s) s))
+
+(define (make-zero-crossings input-stream smooth)
+  (let ((smoothened (smooth input-stream)))
+    (stream-map sign-change-detetor smoothened (cons-stream 0 smoothened))))
