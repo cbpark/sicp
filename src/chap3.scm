@@ -2,8 +2,6 @@
 ;;; 3. Modularity, Objects, and State
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(load "chap2")
-
 ;;;
 ;;; 3.1 Assignment and Local State
 ;;;
@@ -53,6 +51,10 @@
 ;; (define acc (make-account 100))
 
 ;;; 3.1.2 The Benefits of Introducing Assignment
+
+(define random-init 7)
+(define (rand-update x)
+  (modulo (+ (* 13 x) 47) 97))
 
 ;; (define rand (let ((x random-init))
 ;;                (lambda ()
@@ -247,6 +249,33 @@
   'ok)
 
 ;;; Creating local tables
+
+(define (make-table)
+  (let ((local-table (list '*table*)))
+    (define (lookup key-1 key-2)
+      (let ((subtable (assoc key-1 (cdr local-table))))
+        (if subtable
+            (let ((record (assoc key-2 (cdr subtable))))
+              (if record
+                  (cdr record)
+                  false))
+            false)))
+    (define (insert! key-1 key-2 value)
+      (let ((subtable (assoc key-1 (cdr local-table))))
+        (if subtable
+            (let ((record (assoc key-2 (cdr subtable))))
+              (if record
+                  (set-cdr! record value)
+                  (set-cdr! subtable (cons (cons key-2 value)
+                                           (cdr subtable)))))
+            (set-cdr! local-table (cons (list key-1 (cons key-2 value))
+                                        (cdr local-table)))))
+      'ok)
+    (define (dispatch m)
+      (cond ((eq? m 'lookup-proc) lookup)
+            ((eq? m 'insert-proc!) insert!)
+            (else (error "Unknown operation: TABLE" m))))
+    dispatch))
 
 ;;; 3.3.4 A Simulator for Digital Circuits
 
@@ -896,3 +925,48 @@
                  (add-streams (scale-stream integrand dt)
                               int)))
   int)
+
+;;; 3.5.4 Streams and Delayed Evaluation
+
+(define (integral delayed-integrand initial-value dt)
+  (define int
+    (cons-stream initial-value
+                 (let ((integrand (force delayed-integrand)))
+                   (add-streams (scale-stream integrand dt) int))))
+  int)
+
+(define (solve f y0 dt)
+  (define y (integral (delay dy) y0 dt))
+  (define dy (stream-map f y))
+  y)
+
+;;; Normal-order evaluation
+
+;;; 3.5.5 Modularity of Functional Programs and Modularity of Objects
+
+(define random-numbers
+  (cons-stream random-init
+               (stream-map rand-update random-numbers)))
+
+(define (map-successive-pairs f s)
+  (cons-stream (f (stream-car s) (stream-car (stream-cdr s)))
+               (map-successive-pairs f (stream-cdr (stream-cdr s)))))
+(define cesaro-stream
+  (map-successive-pairs (lambda (r1 r2) (= (gcd r1 r2) 1)) random-numbers))
+
+(define (monte-carlo experiment-stream passed failed)
+  (define (next passed failed)
+    (cons-stream (/ passed (+ passed failed))
+                 (monte-carlo (stream-cdr experiment-stream) passed failed)))
+  (if (stream-car experiment-stream)
+      (next (+ passed 1) failed)
+      (next passed (+ failed 1))))
+(define pi
+  (stream-map (lambda (p) (sqrt (/ 6 p))) (monte-carlo cesaro-stream 0 0)))
+
+;;; A functional-programming view of time
+
+(define (stream-withdraw balance amount-stream)
+  (cons-stream balance
+               (stream-withdraw (- balance (stream-car amount-stream))
+                                (stream-cdr amount-stream))))

@@ -85,9 +85,6 @@
 
 ;;; Exercise 3.6
 
-(define random-init 0)
-(define (rand-update x) (+ x 1))
-
 (define rand
   (let ((x random-init))
     (define (dispatch m)
@@ -739,3 +736,64 @@
 (define (make-zero-crossings input-stream smooth)
   (let ((smoothened (smooth input-stream)))
     (stream-map sign-change-detetor smoothened (cons-stream 0 smoothened))))
+
+;;; Exercise 3.77
+
+(define (integral delayed-integrand initial-value dt)
+  (cons-stream initial-value
+               (let ((integrand (force delayed-integrand)))
+                 (if (stream-null? integrand)
+                     the-empty-stream
+                     (integral (stream-cdr integrand)
+                               (+ (* dt (stream-car integrand))
+                                  initial-value)
+                               dt)))))
+
+;;; Exercise 3.78
+
+(define (solve-2nd a b dt y0 dy0)
+  (define y (integral (delay dy) y0 dt))
+  (define dy (integral (delay ddy) dy0 dt))
+  (define ddy (add-streams (scale-stream dy a) (scale-stream y b)))
+  y)
+
+;;; Exercise 3.79
+
+(define (general-solve-2nd f y0 dy0 dt)
+  (define y (integral (delay dy) y0 dt))
+  (define dy (integral (delay ddy) dy0 dt))
+  (define ddy (stream-map f dy y))
+  y)
+
+;;; Exercise 3.80
+
+(define (RLC R L C dt)
+  (lambda (v0 i0)
+    (define vc (integral (delay dv) v0 dt))
+    (define il (integral (delay di) i0 dt))
+    (define dv (scale-stream il (/ -1.0 C)))
+    (define di (add-streams (scale-stream il (- (/ R L)))
+                            (scale-stream vc (/ 1.0 L))))
+    (stream-map (lambda (a b) (cons a b)) vc il)))
+
+;;; Exercise 3.81
+
+(define (rand-stream s)
+  (cons-stream (if (eq? (stream-car s) 'generate)
+                   ((rand 'generate))
+                   (begin (set! random-init (stream-car s))
+                          ((rand 'reset))))
+               (rand-stream (stream-cdr s))))
+
+;;; Exercise 3.82
+
+(define (random-number-pairs low1 high1 low2 high2)
+  (cons-stream (cons (random-in-range low1 high1)
+                     (random-in-range low2 high2))
+               (random-number-pairs low1 high1 low2 high2)))
+
+(define (estimate-integral p x1 x2 y1 y2)
+  (let ((area (* (- x2 x1) (- y2 y1))))
+    (scale-stream
+     (monte-carlo (stream-map p (random-number-pairs x1 x2 y1 y2)) 0 0)
+     area)))
