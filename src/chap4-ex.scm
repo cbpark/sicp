@@ -139,3 +139,80 @@
       (cons (make-lambda (let-vars exp)
                          (list (let-body exp)))
             (let-exps exp))))
+
+;;; Exercise 4.11
+
+(define (make-frame vars vals)
+  (map cons (vars vals)))
+
+(define (add-binding-to-frame! var val frame)
+  (define (add-binding! binding frame)
+    (if (null? (cdr frame))
+        (set-cdr! frame binding)
+        (add-binding! binding (cdr frame))))
+  (add-binding! (list (cons var val)) frame))
+
+(define (lookup-variable-value var env)
+  (define (env-loop env)
+    (define (scan frame)
+      (let ((binding (assoc var frame)))
+        (if binding
+            (cdr binding)
+            (env-loop (enclosing-environment env)))))
+    (if (eq? env the-empty-environment)
+        (error "Unbound variable" var)
+        (scan (first-frame env))))
+  (env-loop env))
+
+(define (set-variable-value! var val env)
+  (define (env-loop env)
+    (define (scan frame)
+      (let ((binding (assoc var frame)))
+        (if binding
+            (set-cdr! binding val)
+            (env-loop (enclosing-environment env)))))
+    (if (eq? env the-empty-environment)
+        (error "Unbound variable: SET!" var)
+        (scan (first-frame env))))
+  (env-loop env))
+
+(define (define-variable! var val env)
+  (let ((frame (first-frame env)))
+    (let ((binding (assoc var frame)))
+      (if binding
+          (set-cdr! binding val)
+          (add-binding-to-frame! var val frame)))))
+
+;;; Exercise 4.12
+
+(define (frame-binding var frame)
+  (assoc var frame))
+
+(define (set-binding-in-frame! var val frame)
+  (set-cdr! (frame-binding var frame) val))
+
+(define (lookup-variable-value var env)
+  (define (env-loop env)
+    (if (eq? env the-empty-environment)
+        (error "Unbound variable" var)
+        (let ((frame (first-frame env)))
+          (if (frame-binding var frame)
+              (cdr (frame-binding var frame))
+              (env-loop (enclosing-environment env))))))
+  (env-loop env))
+
+(define (set-variable-value! var val env)
+  (define (env-loop env)
+    (if (eq? env the-empty-environment)
+        (error "Unbound variable: SET!" var)
+        (let ((frame (first-frame env)))
+          (if (frame-binding var frame)
+              (set-binding-in-frame! var val frame)
+              (env-loop (enclosing-environment env))))))
+  (env-loop env))
+
+(define (define-variable! var val env)
+  (let ((frame (first-frame env)))
+    (if (frame-binding var frame)
+        (set-binding-in-frame! var val frame)
+        (add-binding-to-frame! val val frame))))
