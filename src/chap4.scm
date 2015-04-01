@@ -835,3 +835,7 @@
 ;;; Compound queries
 
 ;;; Rules
+
+;;; Logic as programs
+
+;;; 4.4.2 How the Query System Works
