@@ -839,3 +839,25 @@
 ;;; Logic as programs
 
 ;;; 4.4.2 How the Query System Works
+
+;;; Pattern matching
+
+;;; Stream of frames
+
+;;; Compound queries
+
+;;; Unification
+
+;;; Applying rules
+
+;;; Simple queries
+
+;;; The query evaluator and the driver loop
+
+;;; 4.4.3 Is Logic Programming Mathematical Logic?
+
+;;; Infinite loops
+
+;;; Problems with not
+
+;;; 4.4.4 Implementing the Query System
